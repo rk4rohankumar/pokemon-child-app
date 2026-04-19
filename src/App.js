@@ -1,124 +1,164 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { motion } from "framer-motion";
-import 'tailwindcss/tailwind.css';
+import "tailwindcss/tailwind.css";
+import PokemonCard from "./components/PokemonCard";
+import Loader from "./components/Loader";
+import ErrorState from "./components/ErrorState";
+import EmptyState from "./components/EmptyState";
+import Pagination from "./components/Pagination";
 
-const Loader = () => {
-  return (
-    <div className="flex flex-col items-center justify-center h-screen">
-      <motion.div
-        className="w-16 h-16 border-4 border-t-yellow-500 border-gray-300 rounded-full animate-spin"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, repeat: Infinity }}
-      ></motion.div>
-      <p className="text-lg font-semibold text-gray-700 mt-4">Loading Pokémon...</p>
-    </div>
-  );
-};
+const PAGE_SIZE = 20;
+const API = "https://pokeapi.co/api/v2/pokemon";
 
 const PokemonPage = () => {
+  const [page, setPage] = useState(1);
   const [pokemon, setPokemon] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [error, setError] = useState(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
 
+  const pageCacheRef = useRef(new Map());
+
+  const offset = (page - 1) * PAGE_SIZE;
+  const totalPages = totalCount
+    ? Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+    : 0;
+
+  // Debounce search input
   useEffect(() => {
-    fetchPokemon();
-  }, []);
+    const t = setTimeout(() => {
+      setDebouncedQuery(searchInput.trim().toLowerCase());
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
-  const fetchPokemon = async (query = "") => {
+  const loadPage = useCallback(async (targetOffset) => {
+    setError(null);
+    if (pageCacheRef.current.has(targetOffset)) {
+      const cached = pageCacheRef.current.get(targetOffset);
+      setPokemon(cached.results);
+      setTotalCount(cached.count);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const url = query
-      ? `https://pokeapi.co/api/v2/pokemon/${query.toLowerCase()}`
-      : `https://pokeapi.co/api/v2/pokemon?limit=50`;
-
     try {
-      if (query) {
-        const response = await axios.get(url);
-        setPokemon([response.data]); // Convert single Pokémon object to an array
-      } else {
-        const response = await axios.get(url);
-        const pokemonDetails = await Promise.all(
-          response.data.results.map(async (poke) => {
-            const res = await axios.get(poke.url);
-            return res.data;
-          })
-        );
-        setPokemon(pokemonDetails);
-      }
-    } catch (error) {
-      console.error("Failed to fetch Pokémon:", error);
-      setPokemon([]); // Reset on error
+      const listRes = await axios.get(
+        `${API}?limit=${PAGE_SIZE}&offset=${targetOffset}`
+      );
+      const details = await Promise.all(
+        listRes.data.results.map((p) => axios.get(p.url).then((r) => r.data))
+      );
+      pageCacheRef.current.set(targetOffset, {
+        results: details,
+        count: listRes.data.count,
+      });
+      setPokemon(details);
+      setTotalCount(listRes.data.count);
+    } catch (e) {
+      setError("Failed to load Pokémon. Please try again.");
+      setPokemon([]);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const runSearch = useCallback(async (query) => {
+    setError(null);
+    setSearching(true);
+    try {
+      const res = await axios.get(`${API}/${query}`);
+      setPokemon([res.data]);
+      setTotalCount(0);
+    } catch (e) {
+      if (e?.response?.status === 404) {
+        setPokemon([]);
+        setError(null);
+      } else {
+        setError("Search failed. Please try again.");
+        setPokemon([]);
+      }
+    } finally {
+      setSearching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (debouncedQuery) {
+      runSearch(debouncedQuery);
+    } else {
+      loadPage(offset);
+    }
+  }, [debouncedQuery, offset, loadPage, runSearch]);
+
+  const handleRetry = () => {
+    if (debouncedQuery) runSearch(debouncedQuery);
+    else {
+      pageCacheRef.current.delete(offset);
+      loadPage(offset);
+    }
   };
 
-  if (loading) return <Loader />;
+  const showPagination = !debouncedQuery && totalCount > 0;
+
+  const content = useMemo(() => {
+    if (loading && pokemon.length === 0) return <Loader fullScreen={false} />;
+    if (error) return <ErrorState message={error} onRetry={handleRetry} />;
+    if (pokemon.length === 0) return <EmptyState />;
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        {pokemon.map((poke) => (
+          <PokemonCard key={poke.id} poke={poke} />
+        ))}
+      </div>
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, error, pokemon]);
 
   return (
-    <div className="max-w-6xl mx-auto p-4">
-      <h1 className="text-3xl font-bold text-center mb-6">🔴 Pokémon List</h1>
+    <main className="max-w-6xl mx-auto p-4 motion-reduce:transform-none">
+      <h1 className="text-3xl font-bold text-center mb-6">
+        🔴 Pokémon List
+      </h1>
 
-      {/* Search Input */}
-      <div className="mb-6 flex justify-center">
+      <form
+        role="search"
+        className="mb-6 flex justify-center items-center gap-2"
+        onSubmit={(e) => e.preventDefault()}
+      >
+        <label htmlFor="pokemon-search" className="sr-only">
+          Search Pokémon by name or id
+        </label>
         <input
-          type="text"
+          id="pokemon-search"
+          type="search"
           placeholder="Search Pokémon..."
           className="p-2 border border-gray-300 rounded-md w-64 text-center focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          aria-label="Search Pokémon"
         />
-        <button
-          className="ml-2 bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600"
-          onClick={() => fetchPokemon(searchTerm)}
-        >
-          Search
-        </button>
-      </div>
+        {searching && <Loader fullScreen={false} label="Searching..." />}
+      </form>
 
-      {/* Pokémon Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {pokemon.length > 0 ? (
-          pokemon.map((poke) => (
-            <motion.div
-              key={poke.id}
-              className="rounded-lg overflow-hidden shadow-md bg-white p-4"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <img
-                src={poke.sprites.other["official-artwork"].front_default}
-                alt={poke.name}
-                className="w-full h-48 object-contain"
-              />
-              <h2 className="text-xl font-bold text-center capitalize mt-2">{poke.name}</h2>
-              <div className="flex justify-center space-x-2 mt-2">
-                {poke.types.map((typeInfo) => (
-                  <span
-                    key={typeInfo.type.name}
-                    className={`px-3 py-1 rounded-full text-sm text-white ${
-                      typeInfo.type.name === "grass"
-                        ? "bg-green-500"
-                        : typeInfo.type.name === "fire"
-                        ? "bg-red-500"
-                        : typeInfo.type.name === "water"
-                        ? "bg-blue-500"
-                        : "bg-gray-500"
-                    }`}
-                  >
-                    {typeInfo.type.name}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-          ))
-        ) : (
-          <p className="text-center text-red-500">No Pokémon found.</p>
-        )}
-      </div>
-    </div>
+      <section aria-live="polite" aria-busy={loading || searching}>
+        {content}
+      </section>
+
+      {showPagination && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() =>
+            setPage((p) => (totalPages ? Math.min(totalPages, p + 1) : p + 1))
+          }
+        />
+      )}
+    </main>
   );
 };
 
