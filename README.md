@@ -1,100 +1,43 @@
-# Pokemon Child App Microfrontend
+# Pokémon · Micro Frontend remote
 
-This repository contains the **Pokemon Child App**, designed as a microfrontend in a larger application architecture. It is built using **React**, **Tailwind CSS**, and the **Module Federation Plugin** for Webpack, and configured with **CRACO** for custom configuration.
+A searchable, paginated Pokédex built with React 19, Tailwind 3, axios and
+framer-motion. It runs standalone and is also exposed as a webpack Module
+Federation remote for [micro-frontend-host](https://github.com/rk4rohankumar/micro-frontend-host).
 
-## Features
-- Developed as a microfrontend for seamless integration with a parent application.
-- Built with modern technologies like React and Tailwind CSS.
-- Module Federation for dynamic sharing of code between apps.
-- Responsive and optimized for performance.
+## Data
 
-## Tech Stack
-- **React**: Frontend library for building user interfaces.
-- **Tailwind CSS**: Utility-first CSS framework for styling.
-- **CRACO (Create React App Configuration Override)**: For extending CRA configuration.
-- **Webpack Module Federation**: For microfrontend architecture.
+[PokeAPI](https://pokeapi.co/api/v2/pokemon), no key required. The list
+endpoint is paged 20 at a time; each Pokémon's detail payload is fetched once
+and cached in memory by id, so paging back and forth and repeated searches do
+not refetch.
 
-## Project Setup
+## Run / build
 
-### Prerequisites
-- Node.js (>= 14.x)
-- npm or yarn package manager
-
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/rk4rohankumar/pokemon-child-app.git
-   cd pokemon-child-app
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
-
-### Running the Application
-To start the development server:
 ```bash
-npm start
-# or
-yarn start
-```
-The app will be accessible at [http://localhost:3000](http://localhost:3000).
-
-### Building for Production
-To create a production build:
-```bash
-npm run build
-# or
-yarn build
+npm install
+npm start                 # dev server on http://localhost:3000
+CI=true npx craco build   # production build to build/, remoteEntry.js included
 ```
 
-### Configuration Details
-#### CRACO and Webpack
-The project uses **CRACO** to customize the Webpack configuration for supporting Module Federation:
-- **publicPath**: Set to `https://pokemon-child-app.vercel.app/` for deployment.
-- **Module Federation Plugin**:
-  - Name: `PokemonApp`
-  - Remote Entry: `remoteEntry.js`
-  - Exposes: `./PokemonApp` from `./src/App`
-  - Shared Dependencies: `react`, `react-dom`, and `tailwindcss`
+CRA 5 + CRACO 7 (`craco.config.js`). In production `output.publicPath` is
+`'auto'`, so the chunks resolve relative to wherever `remoteEntry.js` was
+loaded from; dev keeps `/`.
 
-### Deployment
-The app is deployed at: [https://pokemon-child-app.vercel.app/](https://pokemon-child-app.vercel.app/)
+## How the host consumes it
 
-## Microfrontend Integration
-To consume this microfrontend in a parent application, include the following in your Module Federation configuration:
-```javascript
-new ModuleFederationPlugin({
-  remotes: {
-    PokemonApp: 'PokemonApp@https://pokemon-child-app.vercel.app/remoteEntry.js',
-  },
-})
-```
+- Scope name: `PokemonApp`
+- Exposed module: `./PokemonApp` → `src/App` (the default export is the page)
+- Remote entry: `https://pokemon-child-app.vercel.app/remoteEntry.js`
 
-## Scripts
-- `start`: Starts the development server.
-- `build`: Builds the app for production.
-- `test`: Runs tests.
-- `eject`: Ejects the CRA configuration.
+The host injects `remoteEntry.js` at runtime, calls `container.init(__webpack_share_scopes__.default)`,
+then `container.get('./PokemonApp')`. `src/index.js` is an async boundary
+(`import('./bootstrap')`) so shared modules are negotiated before the app code
+evaluates.
 
-## Folder Structure
-```
-photos-child-app/
-├── src/
-│   ├── components/   # Reusable components
-│   ├── App.js         # Main App component
-│   └── index.js       # Entry point
-├── public/            # Static files
-├── craco.config.js    # Custom configuration for Webpack
-└── package.json       # Project metadata and dependencies
-```
+### Shared singletons
 
-## Contribution Guidelines
-Feel free to fork the repository and submit pull requests for any enhancements or bug fixes.
-
-## License
-This project is licensed under the [MIT License](LICENSE).
-
+`react`, `react-dom`, `framer-motion` and `axios` are declared
+`singleton: true` with `requiredVersion` from `package.json`. The host provides
+the instance; standalone the app falls back to its own copy. Nothing is
+`eager`, and Tailwind is not shared (its compiled CSS is bundled with the
+exposed module).
