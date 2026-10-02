@@ -48,6 +48,8 @@ const PokemonCard = ({ poke }) => {
       <img
         src={getSprite(poke)}
         alt={poke.name}
+        width={475}
+        height={475}
         loading="lazy"
         decoding="async"
         className="w-full h-48 object-contain"
