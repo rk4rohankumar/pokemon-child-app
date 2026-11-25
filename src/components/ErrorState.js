@@ -9,7 +9,7 @@ const ErrorState = ({ message = "Something went wrong.", onRetry }) => (
         type="button"
         onClick={onRetry}
         aria-label="Retry loading Pokémon"
-        className="bg-yellow-500 text-gray-900 px-4 py-2 rounded-md hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-700"
+        className="bg-yellow-500 text-[color:var(--mfe-ink,#0f172a)] px-4 py-2 rounded-md hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-700"
       >
         Retry
       </button>

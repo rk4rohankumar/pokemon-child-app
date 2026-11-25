@@ -171,8 +171,9 @@ const PokemonPage = () => {
 
   return (
     <section aria-labelledby="pokemon-heading" className="max-w-6xl mx-auto p-4 motion-reduce:transform-none">
-      <h1 id="pokemon-heading" className="text-3xl font-bold text-center mb-6">
-        <span aria-hidden="true">🔴</span> Pokémon List
+      <p className="text-xs font-medium uppercase tracking-widest text-[color:var(--mfe-accent,#047857)]">Pokémon remote</p>
+      <h1 id="pokemon-heading" className="mt-1 mb-6 text-2xl font-semibold text-[color:var(--mfe-ink,#0f172a)]">
+        Pokémon List
       </h1>
 
       <form
@@ -187,7 +188,7 @@ const PokemonPage = () => {
           id="pokemon-search"
           type="search"
           placeholder="Search Pokémon..."
-          className="p-2 border border-gray-300 rounded-md w-64 text-center focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          className="p-2 border border-[color:var(--mfe-border,#e2e8f0)] rounded-md w-64 text-center focus:outline-none focus:ring-2 focus:ring-yellow-500"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           aria-label="Search Pokémon"

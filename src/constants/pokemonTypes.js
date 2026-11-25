@@ -11,7 +11,7 @@ export const TYPE_COLORS = {
   ghost: "bg-purple-800",
   steel: "bg-slate-500",
   fire: "bg-red-600",
-  water: "bg-blue-600",
+  water: "bg-[var(--mfe-accent,#047857)]",
   grass: "bg-green-700",
   electric: "bg-yellow-700",
   psychic: "bg-pink-600",
