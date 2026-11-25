@@ -19,7 +19,7 @@ const StatBar = ({ label, value }) => {
   const pct = Math.min(100, Math.round((value / 200) * 100));
   return (
     <div className="flex items-center gap-2 text-xs">
-      <span className="w-16 text-gray-600 uppercase">{label}</span>
+      <span className="w-16 text-[color:var(--mfe-muted,#475569)] uppercase">{label}</span>
       <div className="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
         <div
           className="bg-yellow-500 h-2 rounded-full"
@@ -27,7 +27,7 @@ const StatBar = ({ label, value }) => {
           aria-hidden="true"
         />
       </div>
-      <span className="w-8 text-right text-gray-800 font-semibold">{value}</span>
+      <span className="w-8 text-right text-[color:var(--mfe-ink,#0f172a)] font-semibold">{value}</span>
     </div>
   );
 };
@@ -40,7 +40,7 @@ const PokemonCard = ({ poke }) => {
 
   return (
     <motion.article
-      className="rounded-lg overflow-hidden shadow-md bg-white p-4"
+      className="rounded-[var(--mfe-radius,12px)] overflow-hidden shadow-sm bg-[var(--mfe-surface,#ffffff)] p-4"
       initial={reduce ? false : { opacity: 0, scale: 0.95 }}
       animate={reduce ? undefined : { opacity: 1, scale: 1 }}
       transition={{ duration: reduce ? 0 : 0.3 }}

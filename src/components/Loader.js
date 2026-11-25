@@ -11,13 +11,13 @@ const Loader = ({ fullScreen = true, label = "Loading Pokémon..." }) => {
       <motion.div
         className={`${
           fullScreen ? "w-16 h-16 border-4" : "w-5 h-5 border-2"
-        } border-t-yellow-500 border-gray-300 rounded-full ${
+        } border-t-yellow-500 border-[color:var(--mfe-border,#e2e8f0)] rounded-full ${
           reduce ? "" : "animate-spin"
         }`}
         aria-hidden="true"
       />
       {fullScreen && (
-        <p className="text-lg font-semibold text-gray-700 mt-4">{label}</p>
+        <p className="text-lg font-semibold text-[color:var(--mfe-muted,#475569)] mt-4">{label}</p>
       )}
       <span className="sr-only">{label}</span>
     </div>
